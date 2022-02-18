@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .container{
+            width:100%;
+            display:flex;
+            justify-content: center;
+            height:90vh;
+            align-items:center;
+        }
+        .central-buttons > div{ 
+            display:flex;
+            justify-content: center;
+        }
+        .central-buttons button{
+            margin:0 5px;
+        }
+        .control button{
+            padding:20px;
+            cursor:pointer;
+        }
+        .centralized-buttons{
+            padding:10px;
+        }
+        
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>  
+    
+    <div class="container">
+        <div class="control">
+            <div class="central-buttons">
+                <div class=""><button class="button-up">UP</button></div>
+                <div class="centralized-buttons">
+                    <div>
+                        <button class="button-left">LEFT</button>
+                        <button class="button-right">RIGHT</button>
+                    </div>
+                </div><!--central-buttons-->
+                <div class=""><button class="button-down">DOWN</button></div>
+            </div>
+        </div><!--controll-->
+    </div><!--container-->
+
+
+
+
+    <script type="module">
+        import createClickListener from '/clickListener.js'
+        const clickListener = createClickListener()
+        var socket = io()
+        let snakeId = location.pathname.split('/')[2]
+        
+        socket.on('connect', (obj)=>{
+            
+            socket.emit('setup-type', {type:'control', snakeId})
+            clickListener.registerSnake(snakeId)
+            clickListener.subscribe((command)=>{
+                console.log('sending')
+                socket.emit(command.type, command)
+            })
+
+        })
+
+        socket.on('forceDisconnect', ()=>{
+            alert('Houve um erro, verifique se a tela principal do jogo foi desconectada.')
+        })
+    </script>
+</body>
+</html>

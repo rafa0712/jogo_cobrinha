@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #screen{
+            border:3px solid #ccc;
+            image-rendering:pixelated;
+            image-rendering: crisp-edges;
+            image-rendering:-moz-crisp-edges;
+            width:500px;
+            height:500px;
+        }
+        .d-flex{
+            display:flex;
+        }
+        .players{
+            padding-left:50px;
+            text-align:center;
+        }
+        .one-snake{
+            padding:10px;
+            font-size:13pt;
+            border-top:1px solid black;
+            border-bottom:1px solid black;
+        }
+    </style>
+
+<script src="/socket.io/socket.io.js"></script>
+       
+
+    
+</head>
+<body>
+    <div class="d-flex">
+
+        <div>
+            <canvas id="screen" width="40" height="40"></canvas>
+        </div>
+        <div class="players">
+            <h2>Current alive players</h2>
+            
+        </div>
+        <div class="qrcode-container">
+            <img src="" alt="" width="100">
+
+        </div>
+        
+    </div>
+        
+    <script type="module">
+        import createGame from '/game.js'
+        import createKeydownListener from '/keydownListener.js'
+        import createKeyupListener from '/keyupListener.js'
+        import renderGame from '/renderGame.js'
+        
+        
+        
+
+        var game = createGame()
+        const gameScreen = document.querySelector('#screen')
+        let qrcode_el = document.querySelector('.qrcode-container img')
+        const socket = io()
+        const keydownListener = createKeydownListener()
+        const keyupListener = createKeyupListener()
+
+        //game.addSnake({id:'coolsnake', positions:[{ x:5, y:3}, {x:4, y:3}, {x:3, y:3}]})
+        
+        socket.on('connect', ()=>{
+            socket.emit('setup-type', {type:'game'})
+            let {id:snakeId} = socket
+            qrcode_el.src = `https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=http://192.168.15.2:8000/mobile/${snakeId}`
+            renderGame(game, snakeId)
+        })
+
+        socket.on('setup', (setup)=>{
+            game.setState(setup)
+            for (let snakeId in game.state.snakes){
+                addSnake(snakeId)
+            }
+            gameScreen.width = game.state.screen.width
+            gameScreen.height = game.state.screen.height
+
+            keydownListener.registerSnake(socket.id)
+            keyupListener.registerSnake(socket.id)
+
+            
+            keydownListener.subscribe(command=>{
+                console.log('executing')
+                socket.emit(command.type, command)
+            })
+
+            keyupListener.subscribe(command=>{
+                socket.emit(command.type, command)
+            })
+        })
+
+        socket.on('add-snake', command=>{
+            game.addSnake(command)
+            if (command.id != socket.id)
+                addSnake(command.id)
+        })
+
+        socket.on('remove-snake', command=>{
+            removeSnake(command.snakeId)
+            game.removeSnake(command)
+        })
+        
+
+        socket.on('move-snake', command=>{
+            let {snakeId, positions} = command
+            let snake = game.state.snakes[snakeId]
+            if (snake){
+                game.state.snakes[snakeId] = positions
+            }
+        })
+
+        socket.on('add-food', command=>{
+            game.addFood(command)
+        })
+        
+        socket.on('remove-food', command=>{
+            game.removeFood(command)
+        })
+        
+       
+
+        window.game = game
+       
+        
+        function addSnake(snakeId){
+            let el = document.querySelector('.players')
+            let newEl = document.createElement('div')
+            newEl.classList.add('one-snake')
+            newEl.setAttribute('id', snakeId)
+            newEl.innerText=snakeId
+            el.appendChild(newEl)
+        }
+        function removeSnake(snakeId){
+            let el = document.querySelector(`#${snakeId}`)
+            el && el.remove()
+        }
+
+
+    </script>
+</body>
+</html> 
